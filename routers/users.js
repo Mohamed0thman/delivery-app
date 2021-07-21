@@ -82,7 +82,8 @@ router.get("/api/users/:userId", auth, async (req, res) => {
       left join shop_Cart as sc using(user_id)
       left join products as p using(product_id)
       where user_id = $1
-      group by u.user_id
+      group by u.user_id, fullName,  u.email
+      order by u.user_id
       `,
       [req.params.userId]
     );
