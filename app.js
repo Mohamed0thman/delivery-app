@@ -4,6 +4,9 @@ var cors = require("cors");
 const storeRouter = require("./routers/store");
 const productRouter = require("./routers/products");
 const usersRouter = require("./routers/users");
+const shoppingCartRouter = require("./routers/cart");
+const ordersRouter = require("./routers/orders");
+
 // const brandsRouter = require("./routers/brands");
 // const feedbackRouter = require("./routers/feedback");
 // const optionsRouter = require("./routers/options");
@@ -19,6 +22,9 @@ app.use(express.static("upload"));
 app.use(storeRouter);
 app.use(productRouter);
 app.use(usersRouter);
+app.use(shoppingCartRouter);
+app.use(ordersRouter);
+
 // app.use(brandsRouter);
 // app.use(feedbackRouter);
 // app.use(optionsRouter);

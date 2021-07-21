@@ -42,12 +42,35 @@ router.post("/api/products", upload.single("image"), async (req, res) => {
 });
 
 router.get("/api/products/:shopId", async (req, res) => {
-  console.log(req.params.shopId);
+  const page = parseInt(req.query.page);
+  const limit = parseInt(req.query.limit);
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const results = {};
   try {
-    const data = await db.query("SELECT * FROM products WHERE shop_id = $1", [
-      req.params.shopId,
-    ]);
+    const data = await db.query(
+      "SELECT *, count(*) OVER( )  AS full_count FROM products   WHERE shop_id = $1  ORDER BY  product_id OFFSET $2 ROWS FETCH first $3 ROW ONLY",
+      [req.params.shopId, startIndex, limit]
+    );
+
+    const fullCount = data.rows.length > 0 ? data.rows[0].full_count : 0;
+
+    if (endIndex < fullCount) {
+      results.next = {
+        page: page + 1,
+        limit: limit,
+      };
+    }
+
     const products = formatProducts(data.rows);
+
+    if (!data.rows.length) {
+      res.status(200).json({
+        status: "success",
+        results: products.length,
+        message: "no more product",
+      });
+    }
     res.status(200).json({
       status: "success",
       results: products.length,

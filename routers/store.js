@@ -4,11 +4,13 @@ const router = new express.Router();
 const db = require("../db/index");
 const upload = require("../utiles/multer");
 
+const https = require("https"); //First require the module
+
 router.get("/", (req, res) => {
   res.send("welcome to backend");
 });
 
-const formatShops = (shops) => {
+const formatShops = (shops, fullUrl) => {
   return shops.map((shop) => ({
     id: shop.shop_id,
     image: shop.shop_image,
@@ -19,13 +21,15 @@ const formatShops = (shops) => {
     address: shop.address,
     latitude: shop.latitude,
     longitude: shop.longitude,
-    baseLink: process.env.BASE_LINK,
+    baseLink: fullUrl,
     createdAt: shop.created_at,
     updatedAt: shop.updated_at,
   }));
 };
 
 router.post("/api/shops", upload.single("image"), async (req, res) => {
+  const fullUrl = `${req.protocol}://${req.get("host")}`;
+
   const { shop_name, shop_type, shop_status, address, latitude, longitude } =
     JSON.parse(req.body.document);
   const file = req.file;
@@ -43,7 +47,7 @@ router.post("/api/shops", upload.single("image"), async (req, res) => {
         longitude,
       ]
     );
-    const shops = formatShops(data.rows);
+    const shops = formatShops(data.rows, fullUrl);
 
     res.status(200).json({
       status: "success",
@@ -56,12 +60,41 @@ router.post("/api/shops", upload.single("image"), async (req, res) => {
 });
 
 router.get("/api/shops", async (req, res) => {
+  const fullUrl = `${req.protocol}://${req.get("host")}`;
+  const page = parseInt(req.query.page);
+  const limit = parseInt(req.query.limit);
+  const startIndex = (page - 1) * limit;
+  const endIndex = page * limit;
+  const results = {};
+
   try {
-    const data = await db.query("SELECT * FROM shops");
-    const shops = formatShops(data.rows);
+    const data = await db.query(
+      "SELECT *, count(*) OVER( )  AS full_count FROM shops ORDER BY  shop_id  OFFSET $1 ROWS FETCH first $2 ROW ONLY",
+      [startIndex, limit]
+    );
+
+    const fullCount = data.rows.length > 0 ? data.rows[0].full_count : 0;
+
+    if (endIndex < fullCount) {
+      results.next = {
+        page: page + 1,
+        limit: limit,
+      };
+    }
+
+    const shops = formatShops(data.rows, fullUrl);
+
+    if (!data.rows.length) {
+      res.status(200).json({
+        status: "success",
+        results: shops.length,
+        message: "no more shops",
+      });
+    }
     res.status(200).json({
       status: "success",
       results: shops.length,
+      next: results.next,
       shops: shops,
     });
   } catch (err) {

@@ -5,7 +5,7 @@ const bcrybt = require("bcrypt");
 const db = require("../db/index");
 
 const jwtGenerator = require("../utiles/jwtGenerator");
-const { auth } = require("../middleware/auth");
+const auth = require("../middleware/auth");
 
 router.post("/api/users/register", async (req, res) => {
   const { first_name, last_name, email, password, confirmPassword } = req.body;
@@ -67,6 +67,30 @@ router.post("/api/users/login", async (req, res) => {
       status: "success",
       results: user.rows.length,
       user: { ...user.rows[0], token: jwtToken },
+    });
+  } catch (err) {
+    console.log(err);
+  }
+});
+
+router.get("/api/users/:userId", auth, async (req, res) => {
+  try {
+    const user = await db.query(
+      `   
+      select u.user_id, concat(u.first_name, ' ', u.last_name) as fullName, u.email , 
+      json_agg( sc.* ) as  shoppingCart from users  as u
+      left join shop_Cart as sc using(user_id)
+      left join products as p using(product_id)
+      where user_id = $1
+      group by u.user_id
+      `,
+      [req.params.userId]
+    );
+
+    res.status(200).json({
+      status: "success",
+      results: user.rows.length,
+      user: user.rows,
     });
   } catch (err) {
     console.log(err);
