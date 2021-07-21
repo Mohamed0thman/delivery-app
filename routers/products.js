@@ -3,7 +3,7 @@ const router = new express.Router();
 const db = require("../db/index");
 const upload = require("../utiles/multer");
 
-const formatProducts = (products) =>
+const formatProducts = (products, fullUrl) =>
   products.map((product) => ({
     id: product.product_id,
     shopId: product.shop_id,
@@ -11,12 +11,14 @@ const formatProducts = (products) =>
     name: product.product_name,
     price: product.price,
     quantity: product.quantity,
-    baseLink: process.env.BASE_LINK,
+    baseLink: fullUrl,
     createdAt: product.created_at,
     updatedAt: product.updated_at,
   }));
 
 router.post("/api/products", upload.single("image"), async (req, res) => {
+  const fullUrl = `${req.protocol}://${req.get("host")}`;
+
   const { shop_id, product_name, price, quantity } = JSON.parse(
     req.body.document
   );
@@ -27,7 +29,7 @@ router.post("/api/products", upload.single("image"), async (req, res) => {
       "INSERT INTO products (shop_id, product_name, product_image, price, quantity ) values ($1, $2, $3, $4, $5) returning *",
       [shop_id, product_name, file.filename, price, quantity]
     );
-    const products = formatProducts(data.rows);
+    const products = formatProducts(data.rows, fullUrl);
 
     console.log(products);
 
@@ -42,6 +44,8 @@ router.post("/api/products", upload.single("image"), async (req, res) => {
 });
 
 router.get("/api/products/:shopId", async (req, res) => {
+  const fullUrl = `${req.protocol}://${req.get("host")}`;
+
   const page = parseInt(req.query.page);
   const limit = parseInt(req.query.limit);
   const startIndex = (page - 1) * limit;
@@ -62,7 +66,7 @@ router.get("/api/products/:shopId", async (req, res) => {
       };
     }
 
-    const products = formatProducts(data.rows);
+    const products = formatProducts(data.rows, fullUrl);
 
     if (!data.rows.length) {
       res.status(200).json({
