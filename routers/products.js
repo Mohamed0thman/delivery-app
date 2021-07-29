@@ -43,7 +43,7 @@ router.post("/api/products", upload.single("image"), async (req, res) => {
   }
 });
 
-router.get("/api/products/:shopId", async (req, res) => {
+router.get("/api/:storeName/products", async (req, res) => {
   const fullUrl = `${req.protocol}://${req.get("host")}`;
 
   const page = parseInt(req.query.page);
@@ -51,10 +51,17 @@ router.get("/api/products/:shopId", async (req, res) => {
   const startIndex = (page - 1) * limit;
   const endIndex = page * limit;
   const results = {};
+
+  console.log(req.params.storeName);
   try {
+    const getStore = await db.query(
+      "SELECT shop_id FROM shops WHERE shop_name = $1 ",
+      [req.params.storeName]
+    );
+    console.log(getStore);
     const data = await db.query(
       "SELECT *, count(*) OVER( )  AS full_count FROM products   WHERE shop_id = $1  ORDER BY  product_id OFFSET $2 ROWS FETCH first $3 ROW ONLY",
-      [req.params.shopId, startIndex, limit]
+      [getStore.rows[0].shop_id, startIndex, limit]
     );
 
     const fullCount = data.rows.length > 0 ? data.rows[0].full_count : 0;
@@ -68,13 +75,6 @@ router.get("/api/products/:shopId", async (req, res) => {
 
     const products = formatProducts(data.rows, fullUrl);
 
-    if (!data.rows.length) {
-      res.status(200).json({
-        status: "success",
-        results: products.length,
-        message: "no more product",
-      });
-    }
     res.status(200).json({
       status: "success",
       results: products.length,

@@ -16,7 +16,7 @@ const formatShops = (shops, fullUrl) => {
     image: shop.shop_image,
     name: shop.shop_name,
     type: shop.shop_type,
-    rate: 0,
+    rating: shop.average_rating ? shop.average_rating : 0,
     status: shop.shop_status,
     address: shop.address,
     latitude: shop.latitude,
@@ -52,7 +52,7 @@ router.post("/api/shops", upload.single("image"), async (req, res) => {
     res.status(200).json({
       status: "success",
       results: shops.length,
-      shops: shops,
+      stores: shops,
     });
   } catch (err) {
     console.log(err);
@@ -69,7 +69,10 @@ router.get("/api/shops", async (req, res) => {
 
   try {
     const data = await db.query(
-      "SELECT *, count(*) OVER( )  AS full_count FROM shops ORDER BY  shop_id  OFFSET $1 ROWS FETCH first $2 ROW ONLY",
+      `SELECT *, count(*) OVER( )  AS full_count FROM shops 
+      left join (select shop_id, count(*), trunc(avg(rating),1)as average_rating from feedback 
+      group by shop_id)as feedback USING(shop_id)
+      ORDER BY  shop_id  OFFSET $1 ROWS FETCH first $2 ROW ONLY`,
       [startIndex, limit]
     );
 
@@ -95,7 +98,7 @@ router.get("/api/shops", async (req, res) => {
       status: "success",
       results: shops.length,
       next: results.next,
-      shops: shops,
+      stores: shops,
     });
   } catch (err) {
     console.log(err);
