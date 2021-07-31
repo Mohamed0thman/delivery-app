@@ -7,6 +7,7 @@ const productRouter = require("./routers/products");
 const usersRouter = require("./routers/users");
 const shoppingCartRouter = require("./routers/cart");
 const ordersRouter = require("./routers/orders");
+const categoriesRouter = require("./routers/categories");
 
 const app = express();
 app.use(cors());
@@ -22,6 +23,6 @@ app.use(productRouter);
 app.use(usersRouter);
 app.use(shoppingCartRouter);
 app.use(ordersRouter);
-
+app.use(categoriesRouter);
 
 module.exports = app;
